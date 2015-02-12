@@ -29,7 +29,7 @@ What are the requirements?
 
 What is the license
 -------------------
-Read the file named LICENSE ;)
+Read the license: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
 
 What is unfinished/todo?
 ------------------------
