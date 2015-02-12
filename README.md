@@ -50,4 +50,4 @@ and submit a pull request! :)
 
 All right, who is responsible for this?
 ----------------------------
-Primarily that would be me: https://github.com/xavierpayne
+Primarily that would be me: [Christopher Vincelette](https://github.com/xavierpayne)
