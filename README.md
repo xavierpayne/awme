@@ -6,6 +6,14 @@ your Amazon host and security group instance metadata!
 
 awme consists of two main parts:
 
+amazon_metadata_collector
+Fetches host and security group instance data using the AWS api (via boto) at a
+configurable interval and serializes it to disk.
+
+restful_metadata_cache
+Loads and periodically refreshes from pre-serialized metadata on disk and
+serves it from memory as json from a restful api exposed via flask.
+
 Amazon already has an api. Why does awme exist?
 ---------------------------------------
 True Amazon has an API, but that API also has latency. Sometimes it's under one
