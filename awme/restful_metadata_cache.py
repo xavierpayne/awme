@@ -59,7 +59,7 @@ def main():
     config = ConfigParser.RawConfigParser(allow_no_value=True)
     config.read('config.ini')
     
-    supportedRegions = config.get('am_e_general', 'supported_regions').strip().split(',')
+    supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
     
     print "done."
     

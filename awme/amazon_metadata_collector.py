@@ -30,7 +30,7 @@ class AmazonInstanceDataCollector(object):
         config = ConfigParser.RawConfigParser(allow_no_value=True)
         config.read('config.ini')
         
-        self.supportedRegions = config.get('am_e_general', 'supported_regions').strip().split(',')
+        self.supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
 
         self.logger.debug("Supported Regions %s" % self.supportedRegions)
         for region_string in self.supportedRegions:
