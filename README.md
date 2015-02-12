@@ -6,11 +6,11 @@ your Amazon host and security group instance metadata!
 
 awme consists of two main parts:
 
-amazon_metadata_collector
+###amazon_metadata_collector
 Fetches host and security group instance data using the AWS api (via boto) at a
 configurable interval and serializes it to disk.
 
-restful_metadata_cache
+###restful_metadata_cache
 Loads and periodically refreshes from pre-serialized metadata on disk and
 serves it from memory as json from a restful api exposed via flask.
 
@@ -50,4 +50,4 @@ and submit a pull request! :)
 
 All right, who is responsible for this?
 ----------------------------
-Primarily that would be me: chriss@chrissvincelette.com
+Primarily that would be me: https://github.com/xavierpayne
