@@ -3,8 +3,11 @@
 from flask import Flask, jsonify, abort
 import pickle
 import ConfigParser, os.path
+import logging
 
 app = Flask(__name__)
+
+logger = logging.getLogger(__name__)
 
 host_metadata_by_instance_id_dict = pickle.load(open("/dev/shm/host_metadata_by_instance_id_dict.pickle.tmp", "rb"))
 security_group_info_by_sg_id_dict = pickle.load(open("/dev/shm/security_groups_dict.pickle.tmp", "rb"))
@@ -48,8 +51,8 @@ def main():
     app.run(host='0.0.0.0', port=10080, debug=True)
     
     if not os.path.isfile('config.ini'):
-        print "Unable to load config.ini file!"
-        exit()
+        logger.error("Unable to load config.ini file!")
+        exit(1)
     else:
         print "Found config.ini file."
     

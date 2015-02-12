@@ -2,12 +2,15 @@
 
 import boto.ec2
 import pickle
+import logging
 import ConfigParser, time, os.path
 
 class AmazonInstanceDataCollector(object):
     '''
     classdocs
     '''
+    logger = logging.getLogger(__name__)
+    
     hosts_by_region_dict = dict()
     sg_by_region_dict = dict()
    
@@ -19,17 +22,17 @@ class AmazonInstanceDataCollector(object):
         '''
         
         if not os.path.isfile('config.ini'):
-            print "Unable to load config.ini file!"
-            exit()
+            self.logger.error("Unable to load config.ini file!")
+            exit(1)
         else:
-            print "Found config.ini file."
+            self.logger.debug("Found config.ini file.")
         
         config = ConfigParser.RawConfigParser(allow_no_value=True)
         config.read('config.ini')
         
         self.supportedRegions = config.get('am_e_general', 'supported_regions').strip().split(',')
 
-        print "Supported Regions %s" % self.supportedRegions
+        self.logger.debug("Supported Regions %s" % self.supportedRegions)
         for region_string in self.supportedRegions:
             self.security_groups_dict[region_string] = dict()
             self.host_metadata_by_instance_id_dict[region_string] = dict()
@@ -43,10 +46,10 @@ class AmazonInstanceDataCollector(object):
     def loadInstanceDataFromAWS(self, region_string):
         host_metadata_by_instance_id_dict = dict()
         
-        print "Making request to AWS API..."
+        self.logger.debug("Making request to AWS API...")
         ec2_conn = boto.connect_ec2()
         
-        print boto.ec2.regions()
+        self.logger.debug(boto.ec2.regions())
         
         security_groups_dict = self.build_initial_security_groups_dict(ec2_conn)
         
@@ -54,12 +57,10 @@ class AmazonInstanceDataCollector(object):
         aws_reservations_list = ec2_conn.get_all_instances()
         response_time = time.clock() - start_time
             
-        print "Response received in [%s] seconds!" % response_time
-
-        print "\n"
-        print "found [%s] reservations." % len(aws_reservations_list)
-        print "-------------------------------------"
-        print "Caching host metadata in memory..."
+        self.logger.debug("Response received in [%s] seconds!\n" % response_time)
+        self.logger.debug("found [%s] reservations." % len(aws_reservations_list))
+        self.logger.debug("-------------------------------------")
+        self.logger.debug("Caching host metadata in memory...")
 
         for host_instance_list in aws_reservations_list:
             host_instance_dict = dict()
@@ -94,7 +95,7 @@ class AmazonInstanceDataCollector(object):
         pickle.dump(self.hosts_by_region_dict, open("/dev/shm/host_metadata_by_instance_id_dict.pickle.tmp", "wb"))
         pickle.dump(self.sg_by_region_dict, open("/dev/shm/security_groups_dict.pickle.tmp", "wb"))
 
-        print "In memory data refreshed from AWS and serialized to disk!\n"
+        self.logger.debug("In memory data refreshed from AWS and serialized to disk!\n")
 
 
     def build_initial_security_groups_dict(self, ec2_conn):
@@ -102,8 +103,6 @@ class AmazonInstanceDataCollector(object):
         security_groups_dict = dict()
 
         for security_group in aws_security_group_list:
-            #print "SG Name: %s" % security_group.name
-            #print "SG Group Id: %s" % security_group.id
             sg_dict = dict()
             sg_dict['sg_name'] = security_group.name
             sg_dict['hosts'] = list() #Hosts is empty just for initialization
