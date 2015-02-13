@@ -25,17 +25,17 @@ class AmazonInstanceDataCollector(object):
             self.logger.error("Unable to load config.ini file!")
             exit(1)
         else:
-            self.logger.debug("Found config.ini file.")
+            self.logger.info("Found config.ini file.")
         
         config = ConfigParser.RawConfigParser(allow_no_value=True)
-        config.read('config.ini')
+        config.read('../config/config.ini')
         
         self.supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
 
         self.logger.debug("Supported Regions %s" % self.supportedRegions)
         for region_string in self.supportedRegions:
-            self.security_groups_dict[region_string] = dict()
-            self.host_metadata_by_instance_id_dict[region_string] = dict()
+            self.sg_by_region_dict[region_string] = dict()
+            self.hosts_by_region_dict[region_string] = dict()
 
     def getInstanceDataforHostname(self, hostname):
         return self.host_metadata_by_hostname_dict[hostname]
@@ -114,7 +114,8 @@ class AmazonInstanceDataCollector(object):
 def main():
     amazonInstanceDataCollector = AmazonInstanceDataCollector(None)
     
-    amazonInstanceDataCollector.loadInstanceDataFromAWS()
+    for region_string in amazonInstanceDataCollector.supportedRegions:
+        amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
 
 if __name__ == "__main__":
     main()

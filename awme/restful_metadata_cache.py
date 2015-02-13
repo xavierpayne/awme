@@ -50,13 +50,15 @@ def get_regions():
 def main():
     app.run(host='0.0.0.0', port=10080, debug=True)
     
-    if not os.path.isfile('config.ini'):
+    if not os.path.isfile('../config/config.ini'):
         logger.error("Unable to load config.ini file!")
         exit(1)
     else:
         print "Found config.ini file."
     
-    config = ConfigParser.RawConfigParser(allow_no_value=True)
+    #not supported until python 2.7
+    #config = ConfigParser.RawConfigParser(allow_no_value=True)
+    config = ConfigParser.RawConfigParser()
     config.read('../config/config.ini')
     
     supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
