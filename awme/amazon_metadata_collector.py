@@ -2,7 +2,7 @@
 
 import boto.ec2
 import pickle
-import logging
+import logging, sys
 import ConfigParser, time, os.path
 
 class AmazonInstanceDataCollector(object):
@@ -10,11 +10,21 @@ class AmazonInstanceDataCollector(object):
     classdocs
     '''
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
     
     hosts_by_region_dict = dict()
     sg_by_region_dict = dict()
    
-    supportedRegions = list()
+    #Config variables are just defaults.
+    #They can be replaced in the config.ini.
+    config_supported_regions = list()   
+    config_persistence_dir = "/dev/shm"
 
     def __init__(self, params):
         '''
@@ -32,10 +42,11 @@ class AmazonInstanceDataCollector(object):
         config = ConfigParser.RawConfigParser()
         config.read('../config/config.ini')
         
-        self.supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
+        self.config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
+        self.config_persistence_dir = config.get('awme_general', 'persistence_dir')
 
-        self.logger.debug("Supported Regions %s" % self.supportedRegions)
-        for region_string in self.supportedRegions:
+        self.logger.debug("Supported Regions %s" % self.config_supported_regions)
+        for region_string in self.config_supported_regions:
             self.sg_by_region_dict[region_string] = dict()
             self.hosts_by_region_dict[region_string] = dict()
 
@@ -48,8 +59,8 @@ class AmazonInstanceDataCollector(object):
     def loadInstanceDataFromAWS(self, region_string):
         host_metadata_by_instance_id_dict = dict()
         
-        self.logger.debug("Making request to AWS API...")
-        ec2_conn = boto.connect_ec2()
+        self.logger.debug("Fetching AWS metadata for region [%s]..." % region_string)
+        ec2_conn = boto.ec2.connect_to_region(region_string)
         
         self.logger.debug(boto.ec2.regions())
         
@@ -94,10 +105,10 @@ class AmazonInstanceDataCollector(object):
         self.sg_by_region_dict[region_string] = security_groups_dict
         
         #Serialize our data structures to disk
-        pickle.dump(self.hosts_by_region_dict, open("/dev/shm/host_metadata_by_instance_id_dict.pickle.tmp", "wb"))
-        pickle.dump(self.sg_by_region_dict, open("/dev/shm/security_groups_dict.pickle.tmp", "wb"))
+        pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
+        pickle.dump(self.sg_by_region_dict, open("%s/security_groups_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
 
-        self.logger.debug("In memory data refreshed from AWS and serialized to disk!\n")
+        self.logger.debug("In memory data refreshed from AWS for region [%s] and serialized to disk!\n" % region_string)
 
 
     def build_initial_security_groups_dict(self, ec2_conn):
@@ -116,8 +127,10 @@ class AmazonInstanceDataCollector(object):
 def main():
     amazonInstanceDataCollector = AmazonInstanceDataCollector(None)
     
-    for region_string in amazonInstanceDataCollector.supportedRegions:
+    for region_string in amazonInstanceDataCollector.config_supported_regions:
         amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
+        
+        amazonInstanceDataCollector.logger.debug("Metadata refreshed for all regions.\n")
 
 if __name__ == "__main__":
     main()
