@@ -27,7 +27,9 @@ class AmazonInstanceDataCollector(object):
         else:
             self.logger.info("Found config.ini file.")
         
-        config = ConfigParser.RawConfigParser(allow_no_value=True)
+        #not supported until python 2.7
+        #config = ConfigParser.RawConfigParser(allow_no_value=True)
+        config = ConfigParser.RawConfigParser()
         config.read('../config/config.ini')
         
         self.supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
