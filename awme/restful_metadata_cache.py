@@ -57,7 +57,7 @@ def main():
         print "Found config.ini file."
     
     config = ConfigParser.RawConfigParser(allow_no_value=True)
-    config.read('config.ini')
+    config.read('../config/config.ini')
     
     supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
     

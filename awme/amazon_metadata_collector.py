@@ -21,7 +21,7 @@ class AmazonInstanceDataCollector(object):
         Constructor
         '''
         
-        if not os.path.isfile('config.ini'):
+        if not os.path.isfile('../config/config.ini'):
             self.logger.error("Unable to load config.ini file!")
             exit(1)
         else:
