@@ -69,7 +69,7 @@ def main():
     host_metadata_by_instance_id_dict = pickle.load(open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % config_persistence_dir, "rb"))
     security_group_info_by_sg_id_dict = pickle.load(open("%s/security_groups_dict.pickle.tmp" % config_persistence_dir, "rb"))
     
-    print "done."
+    logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
     
 if __name__ == '__main__':
     main()

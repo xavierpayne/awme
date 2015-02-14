@@ -130,7 +130,7 @@ class AmazonInstanceDataCollector(object):
         pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.sg_by_region_dict, open("%s/security_groups_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
 
-        self.logger.debug("In memory data serialized to disk!")
+        self.logger.debug("In memory data written to: [%s]!" % self.config_persistence_dir)
 
 
     def initialize_cache(self):
