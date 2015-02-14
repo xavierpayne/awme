@@ -3,11 +3,18 @@
 from flask import Flask, jsonify, abort
 import pickle
 import ConfigParser, os.path
-import logging
+import logging, sys
 
 app = Flask(__name__)
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 host_metadata_by_instance_id_dict = None
 security_group_info_by_sg_id_dict = None
