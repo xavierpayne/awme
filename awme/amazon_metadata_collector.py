@@ -18,8 +18,10 @@ class AmazonInstanceDataCollector(object):
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     
-    hosts_by_region_dict = dict()
-    sg_by_region_dict = dict()
+    #default our unbounded data structures to None. This ensures that 
+    #initialize is called at least once.
+    hosts_by_region_dict = None
+    sg_by_region_dict = None
    
     #Config variables are just defaults.
     #They can be replaced in the config.ini.
@@ -30,7 +32,8 @@ class AmazonInstanceDataCollector(object):
         '''
         Constructor
         '''
-        
+        self.initialize_cache()
+    
         if not os.path.isfile('../config/config.ini'):
             self.logger.error("Unable to load config.ini file!")
             exit(1)
@@ -50,11 +53,14 @@ class AmazonInstanceDataCollector(object):
             self.sg_by_region_dict[region_string] = dict()
             self.hosts_by_region_dict[region_string] = dict()
 
+
     def getInstanceDataforHostname(self, hostname):
         return self.host_metadata_by_hostname_dict[hostname]
 
+
     def getInstanceDataForHostsInSecurityGroup(self, groupname):
         return self.host_in_security_group_dict[groupname]
+
 
     def loadInstanceDataFromAWS(self, region_string):
         host_metadata_by_instance_id_dict = dict()
@@ -62,15 +68,13 @@ class AmazonInstanceDataCollector(object):
         self.logger.debug("Fetching AWS metadata for region [%s]..." % region_string)
         ec2_conn = boto.ec2.connect_to_region(region_string)
         
-        self.logger.debug(boto.ec2.regions())
-        
         security_groups_dict = self.build_initial_security_groups_dict(ec2_conn)
         
         start_time = time.clock() 
         aws_reservations_list = ec2_conn.get_all_instances()
         response_time = time.clock() - start_time
             
-        self.logger.debug("Response received in [%s] seconds!\n" % response_time)
+        self.logger.debug("Response received in [%s] seconds!" % response_time)
         self.logger.debug("found [%s] reservations." % len(aws_reservations_list))
         self.logger.debug("-------------------------------------")
         self.logger.debug("Caching host metadata in memory...")
@@ -104,11 +108,7 @@ class AmazonInstanceDataCollector(object):
         self.hosts_by_region_dict[region_string] = host_metadata_by_instance_id_dict
         self.sg_by_region_dict[region_string] = security_groups_dict
         
-        #Serialize our data structures to disk
-        pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
-        pickle.dump(self.sg_by_region_dict, open("%s/security_groups_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
-
-        self.logger.debug("In memory data refreshed from AWS for region [%s] and serialized to disk!\n" % region_string)
+        self.logger.debug("In memory data refreshed from AWS for region [%s]!" % region_string)
 
 
     def build_initial_security_groups_dict(self, ec2_conn):
@@ -124,13 +124,33 @@ class AmazonInstanceDataCollector(object):
 
         return security_groups_dict
 
+
+    def cache_out(self):
+        #Serialize our data structures to disk
+        pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
+        pickle.dump(self.sg_by_region_dict, open("%s/security_groups_dict.pickle.tmp" % self.config_persistence_dir, "wb"))
+
+        self.logger.debug("In memory data serialized to disk!")
+
+
+    def initialize_cache(self):
+        self.hosts_by_region_dict = dict()
+        self.sg_by_region_dict = dict()
+
+
 def main():
     amazonInstanceDataCollector = AmazonInstanceDataCollector(None)
     
+    #make sure we start with a clean slate.
+    amazonInstanceDataCollector.initialize_cache()
+
+    #fill the cache    
     for region_string in amazonInstanceDataCollector.config_supported_regions:
         amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
-        
-        amazonInstanceDataCollector.logger.debug("Metadata refreshed for all regions.\n")
+
+    #flush the cache to disk
+    amazonInstanceDataCollector.cache_out()
+
 
 if __name__ == "__main__":
     main()

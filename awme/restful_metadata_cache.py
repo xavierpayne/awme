@@ -9,9 +9,11 @@ app = Flask(__name__)
 
 logger = logging.getLogger(__name__)
 
-host_metadata_by_instance_id_dict = pickle.load(open("/dev/shm/host_metadata_by_instance_id_dict.pickle.tmp", "rb"))
-security_group_info_by_sg_id_dict = pickle.load(open("/dev/shm/security_groups_dict.pickle.tmp", "rb"))
-supportedRegions = list()
+host_metadata_by_instance_id_dict = None
+security_group_info_by_sg_id_dict = None
+
+config_supported_regions = list()   
+config_persistence_dir = "/dev/shm"
 
 @app.route('/')
 def index():
@@ -45,7 +47,7 @@ def get_sg_instance_by_id(sg_id):
 
 @app.route('/ops/api/v1.0/regions', methods=['GET'])
 def get_regions():
-    return jsonify({'supported-regions': supportedRegions})
+    return jsonify({'supported-regions': config_supported_regions})
 
 def main():
     app.run(host='0.0.0.0', port=10080, debug=True)
@@ -61,7 +63,11 @@ def main():
     config = ConfigParser.RawConfigParser()
     config.read('../config/config.ini')
     
-    supportedRegions = config.get('awme_general', 'supported_regions').strip().split(',')
+    config_persistence_dir = config.get('awme_general', 'persistence_dir')
+    config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
+    
+    host_metadata_by_instance_id_dict = pickle.load(open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % config_persistence_dir, "rb"))
+    security_group_info_by_sg_id_dict = pickle.load(open("%s/security_groups_dict.pickle.tmp" % config_persistence_dir, "rb"))
     
     print "done."
     
