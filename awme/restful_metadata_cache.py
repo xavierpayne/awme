@@ -66,8 +66,8 @@ def main():
     config_persistence_dir = config.get('awme_general', 'persistence_dir')
     config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
     
-    host_metadata_by_instance_id_dict = pickle.load(open("%s/host_metadata_by_instance_id_dict.pickle.tmp" % config_persistence_dir, "rb"))
-    security_group_info_by_sg_id_dict = pickle.load(open("%s/security_groups_dict.pickle.tmp" % config_persistence_dir, "rb"))
+    host_metadata_by_instance_id_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+    security_group_info_by_sg_id_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
     
     logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
     
