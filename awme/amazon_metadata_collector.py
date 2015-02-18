@@ -83,10 +83,23 @@ class AmazonInstanceDataCollector(object):
             host_instance_dict = dict()
         
             for host_instance in host_instance_list.instances:
+                host_instance_dict['vpc-id'] = host_instance.vpc_id
+                host_instance_dict['instance_id'] = host_instance.id
+                host_instance_dict['instance_type'] = host_instance.instance_type
+                host_instance_dict['placement'] = host_instance.placement
+                host_instance_dict['state'] = host_instance.state
+                host_instance_dict['launch-time'] = host_instance.launch_time
                 host_instance_dict['public_dns_name'] = host_instance.public_dns_name
                 host_instance_dict['private_dns_name'] = host_instance.private_dns_name
-                host_instance_dict['instance_id'] = host_instance.id
-                host_instance_dict['placement'] = host_instance.placement
+                host_instance_dict['image-id'] = host_instance.image_id
+                host_instance_dict['subnet-id'] = host_instance.subnet_id
+                host_instance_dict['ip-address'] = host_instance.ip_address
+                host_instance_dict['private-ip-address'] = host_instance.private_ip_address
+                host_instance_dict['root-device-name'] = host_instance.root_device_name
+                host_instance_dict['root-device-type'] = host_instance.root_device_type
+                host_instance_dict['instance-profile'] = host_instance.instance_profile
+# this one will need to be translated because it does not pickle gracefully
+#                host_instance_dict['block-device-mapping'] = host_instance.block_device_mapping
                 
                 #Make sure the host knows what security groups it belongs to
                 sg_list = list()
