@@ -1,6 +1,6 @@
 #!flask/bin/python
 
-from flask import Flask, jsonify, abort
+from flask import Flask, jsonify, abort, request
 import pickle
 import ConfigParser, os.path
 import logging, sys
@@ -51,21 +51,35 @@ def get_all_host_instances():
 def get_all_sg_instances():
     return jsonify({'security-groups': security_group_metadata_by_region_dict})
 
-
+#http://localhost:10080/ops/api/v1.0/host_instances/i-80380bca?region=eu-west-1c
 @app.route('/ops/api/v1.0/host_instances/<string:instance_id>', methods=['GET'])
 def get_host_instance_by_id(instance_id):
-    if (instance_id not in host_metadata_by_region_dict):
+    region_string = request.args.get('region')
+    logger.debug('Got a request for host [%(1s)s] in region [%(2s)s]' % {'1s' : instance_id, '2s' : region_string})
+    if (region_string not in host_metadata_by_region_dict):
+        logger.debug('Region does not exist')
         abort(404)
 
-    return jsonify({'host-instance': host_metadata_by_region_dict[instance_id]})
+    if (instance_id not in host_metadata_by_region_dict.get(region_string)):
+        logger.debug('Host does not exist')
+        abort(404)
+
+    return jsonify({'host-instance': host_metadata_by_region_dict.get(region_string).get(instance_id)})
 
 
 @app.route('/ops/api/v1.0/sg_instances/<string:sg_id>', methods=['GET'])
 def get_sg_instance_by_id(sg_id):
-    if (sg_id not in security_group_metadata_by_region_dict):
+    region_string = request.args.get('region')
+    logger.debug('Got a request for security-group-id [%(1s)s] in region [%(2s)s]' % {'1s' : sg_id, '2s' : region_string})
+    if (region_string not in security_group_metadata_by_region_dict):
+        logger.debug('Region does not exist')
         abort(404)
 
-    return jsonify({'security-group': security_group_metadata_by_region_dict[sg_id]})
+    if (sg_id not in security_group_metadata_by_region_dict.get(region_string)):
+        logger.debug('Host does not exist')
+        abort(404)
+
+    return jsonify({'security-group': security_group_metadata_by_region_dict.get(region_string).get(sg_id)})
 
 @app.route('/ops/api/v1.0/regions', methods=['GET'])
 def get_regions():
