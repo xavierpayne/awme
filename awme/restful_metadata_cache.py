@@ -42,17 +42,17 @@ def index():
     return "Hello, World!"
 
 
-@app.route('/ops/api/v1.0/host_instances', methods=['GET'])
+@app.route('/awme/api/v1.0/host_instances', methods=['GET'])
 def get_all_host_instances():
     return jsonify({'host-instances': host_metadata_by_region_dict})
 
 
-@app.route('/ops/api/v1.0/sg_instances', methods=['GET'])
+@app.route('/awme/api/v1.0/sg_instances', methods=['GET'])
 def get_all_sg_instances():
     return jsonify({'security-groups': security_group_metadata_by_region_dict})
 
 #http://localhost:10080/ops/api/v1.0/host_instances/i-80380bca?region=eu-west-1c
-@app.route('/ops/api/v1.0/host_instances/<string:instance_id>', methods=['GET'])
+@app.route('/awme/api/v1.0/host_instances/<string:instance_id>', methods=['GET'])
 def get_host_instance_by_id(instance_id):
     region_string = request.args.get('region')
     logger.debug('Got a request for host [%(1s)s] in region [%(2s)s]' % {'1s' : instance_id, '2s' : region_string})
@@ -67,7 +67,7 @@ def get_host_instance_by_id(instance_id):
     return jsonify({'host-instance': host_metadata_by_region_dict.get(region_string).get(instance_id)})
 
 
-@app.route('/ops/api/v1.0/sg_instances/<string:sg_id>', methods=['GET'])
+@app.route('/awme/api/v1.0/sg_instances/<string:sg_id>', methods=['GET'])
 def get_sg_instance_by_id(sg_id):
     region_string = request.args.get('region')
     logger.debug('Got a request for security-group-id [%(1s)s] in region [%(2s)s]' % {'1s' : sg_id, '2s' : region_string})
@@ -81,7 +81,7 @@ def get_sg_instance_by_id(sg_id):
 
     return jsonify({'security-group': security_group_metadata_by_region_dict.get(region_string).get(sg_id)})
 
-@app.route('/ops/api/v1.0/regions', methods=['GET'])
+@app.route('/awme/api/v1.0/regions', methods=['GET'])
 def get_regions():
     return jsonify({'supported-regions': config_supported_regions})
 
