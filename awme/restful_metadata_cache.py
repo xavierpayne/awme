@@ -119,6 +119,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     
                 awsGraph.add_node(sg_instance, {'Label': sg_label,
                                                 'SG-ID': sg_instance,
+                                                'Region': region,
                                                 'Node Type': 'security-group',
                                                 'Cost Per Hour': sg_total_host_instance_cost_per_hour,
                                                 'Cost Per Quarter': sg_total_host_instance_cost_per_quarter,
@@ -126,7 +127,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                                })
             
                 if (sg_parent_node != None):
-                    awsGraph.add_edge(sg_parent_node, sg_instance, {'Label': 'is a',  'Line Color': '#999999'})
+                    awsGraph.add_edge(sg_parent_node, sg_instance, {'Label': 'is a',  'Line Color': '#c0c0c0'})
             
                 if (security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags') != None and
                     len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags')) > 0):
@@ -136,7 +137,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                         upstreamList = upstreamCommaSepTag.split(',')
     
                         for upstreamSG in upstreamList:
-                            awsGraph.add_edge(upstreamSG, sg_instance, {'Label': 'upstream',  'Line Color': '#999999'} )
+                            awsGraph.add_edge(upstreamSG, sg_instance, {'Label': 'upstream',  'Line Color': '#c0c0c0'} )
     
                 for host_instance in security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts'):
                     numTags = len(host_instance.get('tags'))
@@ -166,6 +167,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     awsGraph.add_node(host_instance['instance_id'],
                                        {'Label': hostname,
                                         'Host-ID': host_instance['instance_id'],
+                                        'Region': region,
                                         'Node Type': 'host-instance',
                                         'Product': product,
                                         'Product Service': product_service,
@@ -176,7 +178,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                         'Size': host_instance_size
                                        })
                     
-                    awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#999999'})
+                    awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
 
             if (sg_node_count > 0 or show_unused_resources):
                 sg_total_host_instance_cost_per_hour = host_instance_cost_per_hour * sg_node_count
