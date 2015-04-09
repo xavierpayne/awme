@@ -164,7 +164,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
     
                     host_instance_size = int(host_instance_cost_per_year / 12.0)
     
-                    if (host_instance['instance_type'] == 'stopped'):
+                    if (host_instance['state'] == 'stopped'):
                         host_color = '#ff0000' #Red
                     else:
                         host_color = '#008000' #Green
