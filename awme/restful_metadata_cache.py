@@ -6,7 +6,6 @@ import ConfigParser, os.path
 import logging, sys
 
 import networkx as nx
-import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 
@@ -197,12 +196,6 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     awsGraph.node[sg_instance]['Size'] = sg_node_size
                 else:
                     awsGraph.node[sg_instance]['Size'] = 5
-
-#    nx.draw_circular(awsGraph)
-#    nx.draw(awsGraph, pos=None, with_labels=True)
-    #nx.draw_random(awsGraph)
-    #nx.draw_networkx(awsGraph, pos=None, with_labels=True)
-    #plt.show()
     
     nx.write_graphml(awsGraph,"/tmp/test.graphml")
 
