@@ -164,6 +164,11 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
     
                     host_instance_size = int(host_instance_cost_per_year / 12.0)
     
+                    if (host_instance['instance_type'] == 'stopped'):
+                        host_color = '#ff0000' #Red
+                    else:
+                        host_color = '#008000' #Green
+    
                     awsGraph.add_node(host_instance['instance_id'],
                                        {'Label': hostname,
                                         'Host-ID': host_instance['instance_id'],
@@ -175,7 +180,9 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                         'Cost Per Hour': host_instance_cost_per_hour,
                                         'Cost Per Quarter': host_instance_cost_per_quarter,
                                         'Cost Per Year': host_instance_cost_per_year,
-                                        'Size': host_instance_size
+                                        'state': host_instance['state'],
+                                        'Size': host_instance_size,
+                                        'Color': host_color
                                        })
                     
                     awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
