@@ -154,20 +154,29 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     if (product == None):
                         product = 'No Details Provided. Ask DevOps/Engineering to provide more detail.'
     
-                    host_instance_cost_per_hour = float(config.get('aws_hourly_pricing', host_instance['instance_type']))
-                    host_instance_cost_per_quarter = host_instance_cost_per_hour * 24.0 * 91.31
-                    host_instance_cost_per_year = host_instance_cost_per_hour * 24.0 * 365.25
-    
                     hostname = host_instance['public_dns_name']
                     if (hostname == ''):
                         hostname = 'No Hostname Assigned'
-    
-                    host_instance_size = int(host_instance_cost_per_year / 12.0)
-    
+       
                     if (host_instance['state'] == 'stopped'):
                         host_color = '#ff0000' #Red
+                        host_instance_cost_per_hour = 0.0
+                        host_instance_cost_per_quarter = 0.0
+                        host_instance_cost_per_year = 0.0
                     else:
                         host_color = '#008000' #Green
+                        
+                        #Not charged for stopped instances. Still charged for disks used but the cost is negligible.
+                        host_instance_cost_per_hour = float(config.get('aws_hourly_pricing', host_instance['instance_type']))
+                        host_instance_cost_per_quarter = host_instance_cost_per_hour * 24.0 * 91.31
+                        host_instance_cost_per_year = host_instance_cost_per_hour * 24.0 * 365.25
+                        
+                        awsGraph.node[sg_instance]['Cost Per Hour'] += host_instance_cost_per_hour
+                        awsGraph.node[sg_instance]['Cost Per Quarter'] += host_instance_cost_per_quarter
+                        awsGraph.node[sg_instance]['Cost Per Year'] += host_instance_cost_per_year
+    
+                    #Add 120 just in case it was zero. Wouldn't want to divide by zero.
+                    host_instance_size = int(host_instance_cost_per_year+120 / 12.0)
     
                     awsGraph.add_node(host_instance['instance_id'],
                                        {'Label': hostname,
@@ -187,20 +196,9 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     
                     awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
 
-            if (sg_node_count > 0 or show_unused_resources):
-                sg_total_host_instance_cost_per_hour = host_instance_cost_per_hour * sg_node_count
-                sg_total_host_instance_cost_per_quarter = host_instance_cost_per_quarter * sg_node_count
-                sg_total_host_instance_cost_per_year = host_instance_cost_per_year * sg_node_count
-                
-                awsGraph.node[sg_instance]['Cost Per Hour'] = sg_total_host_instance_cost_per_hour
-                awsGraph.node[sg_instance]['Cost Per Quarter'] = sg_total_host_instance_cost_per_quarter
-                awsGraph.node[sg_instance]['Cost Per Year'] = sg_total_host_instance_cost_per_year
-                
-                if (sg_total_host_instance_cost_per_year > 0):
-                    sg_node_size = int(sg_total_host_instance_cost_per_year / 12.0)
-                    awsGraph.node[sg_instance]['Size'] = sg_node_size
-                else:
-                    awsGraph.node[sg_instance]['Size'] = 5
+            #Add 120 just in case it was zero. Cleaner than an if block just because we don't want to divide by zero.
+            sg_node_size = int(sg_total_host_instance_cost_per_year+120 / 12.0)
+            awsGraph.node[sg_instance]['Size'] = sg_node_size
     
     nx.write_graphml(awsGraph,"/tmp/test.graphml")
 
