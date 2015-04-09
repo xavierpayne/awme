@@ -153,19 +153,15 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     if (product == None):
                         product = 'No Details Provided. Ask DevOps/Engineering to provide more detail.'
     
-                    price_per_hour = float(config.get('aws_hourly_pricing', host_instance['instance_type']))
-                    price_per_quarter = price_per_hour * 24.0 * 91.31
-                    price_per_year = price_per_hour * 24.0 * 365.25
-                    
-                    sg_total_host_instance_cost_per_hour += price_per_hour
-                    sg_total_host_instance_cost_per_quarter += price_per_quarter
-                    sg_total_host_instance_cost_per_year += price_per_year
+                    host_instance_cost_per_hour = float(config.get('aws_hourly_pricing', host_instance['instance_type']))
+                    host_instance_cost_per_quarter = host_instance_cost_per_hour * 24.0 * 91.31
+                    host_instance_cost_per_year = host_instance_cost_per_hour * 24.0 * 365.25
     
                     hostname = host_instance['public_dns_name']
                     if (hostname == ''):
                         hostname = 'No Hostname Assigned'
     
-                    host_instance_size = int(price_per_year / 12.0)
+                    host_instance_size = int(host_instance_cost_per_year / 12.0)
     
                     awsGraph.add_node(host_instance['instance_id'],
                                        {'Label': hostname,
@@ -174,18 +170,18 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                         'Product': product,
                                         'Product Service': product_service,
                                         'Instance Type': host_instance['instance_type'],
-                                        'Cost Per Hour': price_per_hour,
-                                        'Cost Per Quarter': price_per_quarter,
-                                        'Cost Per Year': price_per_year,
+                                        'Cost Per Hour': host_instance_cost_per_hour,
+                                        'Cost Per Quarter': host_instance_cost_per_quarter,
+                                        'Cost Per Year': host_instance_cost_per_year,
                                         'Size': host_instance_size
                                        })
                     
                     awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#999999'})
 
             if (sg_node_count > 0 or show_unused_resources):
-                sg_total_host_instance_cost_per_hour += sg_total_host_instance_cost_per_hour
-                sg_total_host_instance_cost_per_quarter += sg_total_host_instance_cost_per_quarter
-                sg_total_host_instance_cost_per_year += sg_total_host_instance_cost_per_year
+                sg_total_host_instance_cost_per_hour = host_instance_cost_per_hour * sg_node_count
+                sg_total_host_instance_cost_per_quarter = host_instance_cost_per_quarter * sg_node_count
+                sg_total_host_instance_cost_per_year = host_instance_cost_per_year * sg_node_count
                 
                 awsGraph.node[sg_instance]['Cost Per Hour'] = sg_total_host_instance_cost_per_hour
                 awsGraph.node[sg_instance]['Cost Per Quarter'] = sg_total_host_instance_cost_per_quarter
