@@ -98,6 +98,7 @@ class AmazonInstanceDataCollector(object):
                 host_instance_dict['root-device-name'] = host_instance.root_device_name
                 host_instance_dict['root-device-type'] = host_instance.root_device_type
                 host_instance_dict['instance-profile'] = host_instance.instance_profile
+                host_instance_dict['tags'] = host_instance.__dict__['tags']
 # this one will need to be translated because it does not pickle gracefully
 #                host_instance_dict['block-device-mapping'] = host_instance.block_device_mapping
                 
@@ -132,6 +133,7 @@ class AmazonInstanceDataCollector(object):
             sg_dict = dict()
             sg_dict['sg_name'] = security_group.name
             sg_dict['hosts'] = list() #Hosts is empty just for initialization
+            sg_dict['tags'] = security_group.__dict__['tags']
 
             security_groups_dict[security_group.id] = sg_dict
 
