@@ -34,6 +34,7 @@ config_supported_regions = config.get('awme_general', 'supported_regions').strip
 
 host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
 security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
 
 logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
 config_supported_regions = list()   
@@ -107,11 +108,12 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
             sg_total_host_instance_cost_per_year = 0.0
             
             sg_node_count = len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts'))
+            sg_node_count += len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('load_balancers'))
 
             if (sg_node_count > 0 or show_unused_resources):
                 sg_label = str(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('sg_name')) + ' (' + str(sg_node_count) + ')'
     
-                if (len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts')) > 0):
+                if (sg_node_count > 0):
                     sg_node = sg_instance
                     sg_parent_node = None
                 else:
@@ -135,10 +137,20 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
     
                     if (upstreamCommaSepTag != None):
                         upstreamList = upstreamCommaSepTag.split(',')
-    
+   
                         for upstreamSG in upstreamList:
                             awsGraph.add_edge(upstreamSG, sg_instance, {'Label': 'upstream',  'Line Color': '#c0c0c0'} )
+
+                #process Elastic Load Balancers
+                for elb_instance in security_group_metadata_by_region_dict.get(region).get(sg_instance).get('load_balancers'):
+                    awsGraph.add_node(elb_instance['name'],
+                                       {'Label': elb_instance['name'],
+                                        'Region': region,
+                                        'Node Type': 'load-balancer',
+                                       })
+                    awsGraph.add_edge(elb_instance['name'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
     
+                #process hosts
                 for host_instance in security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts'):
                     if (host_instance['state'] == 'stopped'):
                         #if we are trying to show the clean view skip processing this

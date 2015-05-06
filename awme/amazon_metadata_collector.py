@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import boto.ec2
+import boto.ec2, boto.ec2.elb
 import pickle
 import logging, sys
 import ConfigParser, time, os.path
@@ -22,6 +22,7 @@ class AmazonInstanceDataCollector(object):
     #initialize is called at least once.
     hosts_by_region_dict = None
     sg_by_region_dict = None
+    elbs_by_region_dict = None
    
     #Config variables are just defaults.
     #They can be replaced in the config.ini.
@@ -52,6 +53,7 @@ class AmazonInstanceDataCollector(object):
         for region_string in self.config_supported_regions:
             self.sg_by_region_dict[region_string] = dict()
             self.hosts_by_region_dict[region_string] = dict()
+            self.elbs_by_region_dict[region_string] = dict()
 
 
     def getInstanceDataforHostname(self, hostname):
@@ -65,7 +67,7 @@ class AmazonInstanceDataCollector(object):
     def loadInstanceDataFromAWS(self, region_string):
         host_metadata_by_instance_id_dict = dict()
         
-        self.logger.debug("Fetching AWS metadata for region [%s]..." % region_string)
+        self.logger.debug("Fetching AWS instance metadata for region [%s]..." % region_string)
         ec2_conn = boto.ec2.connect_to_region(region_string)
         
         security_groups_dict = self.build_initial_security_groups_dict(ec2_conn)
@@ -99,8 +101,8 @@ class AmazonInstanceDataCollector(object):
                 host_instance_dict['root-device-type'] = host_instance.root_device_type
                 host_instance_dict['instance-profile'] = host_instance.instance_profile
                 host_instance_dict['tags'] = host_instance.__dict__['tags']
-# this one will need to be translated because it does not pickle gracefully
-#                host_instance_dict['block-device-mapping'] = host_instance.block_device_mapping
+                # this one will need to be translated because it does not pickle gracefully
+                #host_instance_dict['block-device-mapping'] = host_instance.block_device_mapping
                 
                 #Make sure the host knows what security groups it belongs to
                 sg_list = list()
@@ -124,6 +126,30 @@ class AmazonInstanceDataCollector(object):
         
         self.logger.debug("In memory data refreshed from AWS for region [%s]!" % region_string)
 
+    def loadELBDataFromAWS(self, region_string):
+        self.logger.debug("Fetching AWS Elastic Load Balancer metadata for region [%s]..." % region_string)
+        elb_conn = boto.ec2.elb.connect_to_region(region_string)
+        balancers = elb_conn.get_all_load_balancers()
+
+        self.logger.debug("Found [" + str(len(balancers)) + "] Load Balancers.")
+
+        elb_metadata_by_name_dict = dict()
+
+        for elb in balancers:
+            self.logger.debug("Found ELB name[" + str(elb.name) + "] in security groups " + str(elb.security_groups))
+            elb_metadata_by_name_dict['name'] = elb.name
+            elb_instance_dict = dict()
+            elb_instance_dict['name'] = elb.name
+            elb_instance_dict['security_groups'] = elb.security_groups
+            
+            for sg_instance in elb.security_groups:
+                #Maintain a reverse lookup that allows us to see what hosts are in a security group                    
+                self.sg_by_region_dict.get(region_string).get(sg_instance).get('load_balancers').append(elb_instance_dict)
+
+            #elb_metadata_by_name_dict['security-group'] = elb.name
+
+        self.hosts_by_region_dict[region_string] = elb_metadata_by_name_dict
+
 
     def build_initial_security_groups_dict(self, ec2_conn):
         aws_security_group_list = ec2_conn.get_all_security_groups()
@@ -133,6 +159,7 @@ class AmazonInstanceDataCollector(object):
             sg_dict = dict()
             sg_dict['sg_name'] = security_group.name
             sg_dict['hosts'] = list() #Hosts is empty just for initialization
+            sg_dict['load_balancers'] = list() #Load Balancers is empty just for initialization
             sg_dict['tags'] = security_group.__dict__['tags']
 
             security_groups_dict[security_group.id] = sg_dict
@@ -144,13 +171,15 @@ class AmazonInstanceDataCollector(object):
         #Serialize our data structures to disk
         pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.sg_by_region_dict, open("%s/security_group_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
-
+        pickle.dump(self.elbs_by_region_dict, open("%s/elb_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
+        
         self.logger.debug("In memory data written to: [%s]!" % self.config_persistence_dir)
 
 
     def initialize_cache(self):
         self.hosts_by_region_dict = dict()
         self.sg_by_region_dict = dict()
+        self.elbs_by_region_dict = dict()
 
 
 def main():
@@ -162,10 +191,11 @@ def main():
     #fill the cache    
     for region_string in amazonInstanceDataCollector.config_supported_regions:
         amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
+        amazonInstanceDataCollector.loadELBDataFromAWS(region_string)
 
     #flush the cache to disk
     amazonInstanceDataCollector.cache_out()
-
+    print("Done!")
 
 if __name__ == "__main__":
     main()
