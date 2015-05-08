@@ -18,6 +18,10 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+#failsafe defaults
+config_supported_regions = list()
+config_persistence_dir = "/dev/shm"
+
 if not os.path.isfile('../config/config.ini'):
     logger.error("Unable to load config.ini file!")
     exit(1)
@@ -37,8 +41,6 @@ security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_met
 elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
 
 logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
-config_supported_regions = list()   
-config_persistence_dir = "/dev/shm"
 
 @app.route('/')
 def index():
@@ -89,13 +91,12 @@ def get_regions():
 #Alpha features
 @app.route('/awme/api/v1.0/sg_instances/unused', methods=['GET'])
 def get_unused_security_groups():
-    
     unused_security_groups_by_region = dict()
     
     for current_region in config_supported_regions:
         all_security_groups = security_group_metadata_by_region_dict.get(current_region)
         unused_groups = list()
-        
+                    
         for sg in all_security_groups:
             sg_node_count = len(security_group_metadata_by_region_dict.get(current_region).get(sg).get('hosts'))
             sg_node_count += len(security_group_metadata_by_region_dict.get(current_region).get(sg).get('load_balancers'))
