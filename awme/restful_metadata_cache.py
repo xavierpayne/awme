@@ -3,7 +3,7 @@
 from flask import Flask, jsonify, abort, request
 import pickle
 import ConfigParser, os.path
-import logging, sys
+import logging, sys, time, thread
 
 import networkx as nx
 
@@ -27,18 +27,14 @@ else:
 #not supported until python 2.7
 #config = ConfigParser.RawConfigParser(allow_no_value=True)
 config = ConfigParser.RawConfigParser()
-config.read('../config/config.ini')
-
-config_persistence_dir = config.get('awme_general', 'persistence_dir')
-config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
-
-host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
-security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
-elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
-
-logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
-config_supported_regions = list()   
 config_persistence_dir = "/dev/shm"
+config_supported_regions = list()
+
+host_metadata_by_region_dict = dict()
+security_group_metadata_by_region_dict = dict()
+elastic_load_balancer_metadata_by_region_dict = dict()
+
+awsGraph=nx.DiGraph()
 
 @app.route('/')
 def index():
@@ -87,6 +83,25 @@ def get_regions():
     return jsonify({'supported-regions': config_supported_regions})
 
 #Alpha features
+@app.route('/awme/api/v1.0/sg_instances/unused', methods=['GET'])
+def get_unused_security_groups():
+    
+    unused_security_groups_by_region = dict()
+    
+    for current_region in config_supported_regions:
+        all_security_groups = security_group_metadata_by_region_dict.get(current_region)
+        unused_groups = list()
+        
+        for sg in all_security_groups:
+            sg_node_count = len(security_group_metadata_by_region_dict.get(current_region).get(sg).get('hosts'))
+            sg_node_count += len(security_group_metadata_by_region_dict.get(current_region).get(sg).get('load_balancers'))
+            
+            if (sg_node_count == 0):
+                unused_groups.append(sg)
+
+        unused_security_groups_by_region[current_region] = unused_groups        
+    
+    return jsonify({'unused-security-groups': unused_security_groups_by_region})
 
 @app.route('/awme/api/v1.1/graphs/in-use-aws-pipeline.graphml', methods=['GET'])
 def get_in_use_aws_pipeline_graph():
@@ -94,7 +109,12 @@ def get_in_use_aws_pipeline_graph():
 
 @app.route('/awme/api/v1.1/graphs/complete-aws-pipeline.graphml', methods=['GET'])
 def get_complete_aws_pipeline_graph(show_unused_resources=True):
-    awsGraph=nx.DiGraph()
+    if show_unused_resources:
+        return open("/tmp/complete.graphml", "r").read()
+    else:
+        return open("/tmp/without_unused.graphml", "r").read()
+
+def generate_aws_pipeline_graph(show_unused_resources=True):
     awsGraph.name = 'AWS Pipeline'
     awsGraph.add_node('public-internet', {'Label': 'Public Internet', 'Node Type': 'public-internet', 'Size': 100})
     awsGraph.add_node('unused-security-groups', {'Label': 'Unused Security Groups', 'Node Type': 'logical-grouping', 'Size': 10})
@@ -219,12 +239,12 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
             
                 awsGraph.node[sg_instance]['Size'] = sg_node_size
     
-    nx.write_graphml(awsGraph,"/tmp/test.graphml")
+    if show_unused_resources:
+        nx.write_graphml(awsGraph,"/tmp/complete.graphml")
+    else:
+        nx.write_graphml(awsGraph,"/tmp/unused.graphml")
 
-    return open("/tmp/test.graphml", "r").read()
 
-    #return "hello!"
-    
 def getPricing(instanceType):
     return config.get('aws_hourly_pricing', instanceType)
 
@@ -232,12 +252,45 @@ def getPricing(instanceType):
 def get_aws_pipeline_graph_png():
     return "hello!"
 
+stop_cache_flow = False
+
+def maintain_positive_cache_flow():
+
+    while not stop_cache_flow:
+        logger.debug('Reloading cache.')
+        
+        config.read('../config/config.ini')
+
+        global host_metadata_by_region_dict, security_group_metadata_by_region_dict, \
+               elastic_load_balancer_metadata_by_region_dict, config_persistence_dir, config_supported_regions
+
+        config_persistence_dir = config.get('awme_general', 'persistence_dir')
+        config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
+        
+        host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        
+        logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
+        
+        generate_aws_pipeline_graph(True)
+        generate_aws_pipeline_graph(False)
+        
+        logger.debug("Graphs Regenerated.")
+        
+        logger.debug('Reload Complete.')
+        time.sleep(120)
+        
+    logger.debug('Shutdown called. Stopping cache flow thread.')
+
+
 def main():   
     #launch server
-    app.run(host='0.0.0.0', port=10080, debug=True)
+    thread.start_new_thread( maintain_positive_cache_flow, ())
+    
+    app.run(host='0.0.0.0', port=10080, debug=False)
 
-    #get_aws_pipeline_graph()
-
+    stop_cache_flow = True
 
 if __name__ == '__main__':
     main()

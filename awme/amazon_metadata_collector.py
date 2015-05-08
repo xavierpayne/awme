@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-import boto.ec2, boto.ec2.elb
+import boto.ec2, boto.ec2.elb, boto.rds
 import pickle
 import logging, sys
-import ConfigParser, time, os.path
+import ConfigParser, time, os.path, thread
 
 class AmazonInstanceDataCollector(object):
     '''
@@ -23,6 +23,7 @@ class AmazonInstanceDataCollector(object):
     hosts_by_region_dict = None
     sg_by_region_dict = None
     elbs_by_region_dict = None
+    rds_by_region_dict = None
    
     #Config variables are just defaults.
     #They can be replaced in the config.ini.
@@ -54,6 +55,7 @@ class AmazonInstanceDataCollector(object):
             self.sg_by_region_dict[region_string] = dict()
             self.hosts_by_region_dict[region_string] = dict()
             self.elbs_by_region_dict[region_string] = dict()
+            self.rds_by_region_dict[region_string] = dict()
 
 
     def getInstanceDataforHostname(self, hostname):
@@ -126,6 +128,33 @@ class AmazonInstanceDataCollector(object):
         
         self.logger.debug("In memory data refreshed from AWS for region [%s]!" % region_string)
 
+    def loadRDSDataFromAWS(self, region_string):
+        self.logger.debug("Fetching AWS Relational Database Service metadata for region [%s]..." % region_string)
+        rds_conn = boto.rds.connect_to_region(region_string)
+        rds_instances = rds_conn.get_all_dbinstances()
+        #rds_conn.get_all_dbsecurity_groups
+        
+        self.logger.debug("Found [" + str(len(rds_instances)) + "] Relational Database Services.")
+
+        rds_metadata_by_name_dict = dict()
+        
+        for rds_instance in rds_instances:
+            self.logger.debug("Found RDS name[" + str(rds_instance.id) + "] in security groups " + str(rds_instance.security_groups))
+            rds_metadata_by_name_dict['name'] = rds_instance.id
+            rds_instance_dict = dict()
+            rds_instance_dict['rds_id'] = rds_instance.id
+            rds_instance_dict['security_groups'] = rds_instance.security_groups
+            
+            for sg_instance in rds_instance.security_groups:
+                #Maintain a reverse lookup that allows us to see what hosts are in a security group                    
+                self.sg_by_region_dict.get(region_string).get(sg_instance).get('relational_database_services').append(rds_instance_dict)
+
+            #elb_metadata_by_name_dict['security-group'] = elb.name
+
+        self.hosts_by_region_dict[region_string] = rds_metadata_by_name_dict
+
+
+
     def loadELBDataFromAWS(self, region_string):
         self.logger.debug("Fetching AWS Elastic Load Balancer metadata for region [%s]..." % region_string)
         elb_conn = boto.ec2.elb.connect_to_region(region_string)
@@ -160,6 +189,7 @@ class AmazonInstanceDataCollector(object):
             sg_dict['sg_name'] = security_group.name
             sg_dict['hosts'] = list() #Hosts is empty just for initialization
             sg_dict['load_balancers'] = list() #Load Balancers is empty just for initialization
+            sg_dict['relational_database_services'] = list() #RDS list is empty just for initialization
             sg_dict['tags'] = security_group.__dict__['tags']
 
             security_groups_dict[security_group.id] = sg_dict
@@ -172,6 +202,7 @@ class AmazonInstanceDataCollector(object):
         pickle.dump(self.hosts_by_region_dict, open("%s/host_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.sg_by_region_dict, open("%s/security_group_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.elbs_by_region_dict, open("%s/elb_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
+        pickle.dump(self.rds_by_region_dict, open("%s/rds_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         
         self.logger.debug("In memory data written to: [%s]!" % self.config_persistence_dir)
 
@@ -180,9 +211,10 @@ class AmazonInstanceDataCollector(object):
         self.hosts_by_region_dict = dict()
         self.sg_by_region_dict = dict()
         self.elbs_by_region_dict = dict()
+        self.rds_by_region_dict = dict()
 
 
-def main():
+def pull_amazon_metadata():
     amazonInstanceDataCollector = AmazonInstanceDataCollector(None)
     
     #make sure we start with a clean slate.
@@ -192,10 +224,19 @@ def main():
     for region_string in amazonInstanceDataCollector.config_supported_regions:
         amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
         amazonInstanceDataCollector.loadELBDataFromAWS(region_string)
+        
+        #RDS code not yet ready for prime time.
+        #amazonInstanceDataCollector.loadRDSDataFromAWS(region_string)
 
     #flush the cache to disk
     amazonInstanceDataCollector.cache_out()
     print("Done!")
 
+
 if __name__ == "__main__":
-    main()
+    
+    while True:
+        pull_amazon_metadata()
+        
+        #wait 5 minutes before pulling again.
+        time.sleep(300)
