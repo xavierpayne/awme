@@ -132,7 +132,7 @@ class AmazonInstanceDataCollector(object):
         self.logger.debug("Fetching AWS Relational Database Service metadata for region [%s]..." % region_string)
         rds_conn = boto.rds.connect_to_region(region_string)
         rds_instances = rds_conn.get_all_dbinstances()
-        #rds_conn.get_all_dbsecurity_groups
+        rds_conn.get_all_dbsecurity_groups
         
         self.logger.debug("Found [" + str(len(rds_instances)) + "] Relational Database Services.")
 
@@ -149,9 +149,9 @@ class AmazonInstanceDataCollector(object):
                 #Maintain a reverse lookup that allows us to see what hosts are in a security group                    
                 self.sg_by_region_dict.get(region_string).get(sg_instance).get('relational_database_services').append(rds_instance_dict)
 
-            #elb_metadata_by_name_dict['security-group'] = elb.name
+            #rds_metadata_by_name_dict['security-group'] = elb.name
 
-        self.hosts_by_region_dict[region_string] = rds_metadata_by_name_dict
+        self.rds_by_region_dict[region_string] = rds_metadata_by_name_dict
 
 
 
@@ -177,7 +177,7 @@ class AmazonInstanceDataCollector(object):
 
             #elb_metadata_by_name_dict['security-group'] = elb.name
 
-        self.hosts_by_region_dict[region_string] = elb_metadata_by_name_dict
+        self.elbs_by_region_dict[region_string] = elb_metadata_by_name_dict
 
 
     def build_initial_security_groups_dict(self, ec2_conn):
