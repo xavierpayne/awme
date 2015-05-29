@@ -3,7 +3,7 @@
 from flask import Flask, jsonify, abort, request
 import pickle
 import ConfigParser, os.path
-import logging, sys
+import logging, sys, time
 
 import networkx as nx
 
@@ -36,11 +36,11 @@ config.read('../config/config.ini')
 config_persistence_dir = config.get('awme_general', 'persistence_dir')
 config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
 
-host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
-security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
-elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+host_metadata_by_region_dict = dict()
+security_group_metadata_by_region_dict = dict()
+elastic_load_balancer_metadata_by_region_dict = dict()
 
-logger.debug("Data loaded into memory from: [%s]!" % config_persistence_dir)
+last_refresh_time = 0
 
 @app.route('/')
 def index():
@@ -49,15 +49,21 @@ def index():
 
 @app.route('/awme/api/v1.0/host_instances', methods=['GET'])
 def get_all_host_instances():
+    refresh()
+    
     return jsonify({'host-instances': host_metadata_by_region_dict})
 
 
 @app.route('/awme/api/v1.0/sg_instances', methods=['GET'])
 def get_all_sg_instances():
+    refresh()
+    
     return jsonify({'security-groups': security_group_metadata_by_region_dict})
 
 @app.route('/awme/api/v1.0/host_instances/<string:instance_id>', methods=['GET'])
 def get_host_instance_by_id(instance_id):
+    refresh()
+    
     region_string = request.args.get('region')
     logger.debug('Got a request for host [%(1s)s] in region [%(2s)s]' % {'1s' : instance_id, '2s' : region_string})
     if (region_string not in host_metadata_by_region_dict):
@@ -72,6 +78,8 @@ def get_host_instance_by_id(instance_id):
 
 @app.route('/awme/api/v1.0/sg_instances/<string:sg_id>', methods=['GET'])
 def get_sg_instance_by_id(sg_id):
+    refresh()
+    
     region_string = request.args.get('region')
     logger.debug('Got a request for security-group-id [%(1s)s] in region [%(2s)s]' % {'1s' : sg_id, '2s' : region_string})
     if (region_string not in security_group_metadata_by_region_dict):
@@ -86,11 +94,15 @@ def get_sg_instance_by_id(sg_id):
 
 @app.route('/awme/api/v1.0/regions', methods=['GET'])
 def get_regions():
+    refresh()
+    
     return jsonify({'supported-regions': config_supported_regions})
 
 #Alpha features
 @app.route('/awme/api/v1.0/sg_instances/unused', methods=['GET'])
 def get_unused_security_groups():
+    refresh()
+    
     unused_security_groups_by_region = dict()
     
     for current_region in config_supported_regions:
@@ -110,10 +122,15 @@ def get_unused_security_groups():
 
 @app.route('/awme/api/v1.1/graphs/in-use-aws-pipeline.graphml', methods=['GET'])
 def get_in_use_aws_pipeline_graph():
+    #Refresh not necessary since this overloads another method that already has it
+    #refresh()
     return get_complete_aws_pipeline_graph(False)
 
 @app.route('/awme/api/v1.1/graphs/complete-aws-pipeline.graphml', methods=['GET'])
 def get_complete_aws_pipeline_graph(show_unused_resources=True):
+    refresh()
+    
+    #TODO cache the graph. Tricky part is there are multiple versions of the graph
     awsGraph=nx.DiGraph()
     awsGraph.name = 'AWS Pipeline'
     awsGraph.add_node('public-internet', {'Label': 'Public Internet', 'Node Type': 'public-internet', 'Size': 100})
@@ -243,15 +260,32 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
 
     return open("/tmp/test.graphml", "r").read()
 
-
 def getPricing(instanceType):
     return config.get('aws_hourly_pricing', instanceType)
+
+def refresh():
+    logger.debug("Checking if it's time for a refresh...")
+    time_Now = time.time()
+    global last_refresh_time, host_metadata_by_region_dict, security_group_metadata_by_region_dict, elastic_load_balancer_metadata_by_region_dict
+    
+    #only reload if we have never loaded before OR at least 2 minutes has elapsed
+    if (time_Now == 0 or time_Now - last_refresh_time > 120):
+        host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+
+        logger.debug("Memory refreshed from files in: [%s]!" % config_persistence_dir)
+        
+        last_refresh_time = time_Now
+    else:
+        logger.debug("NOT time for a refresh...")
 
 @app.route('/awme/api/v1.1/graphs/show-aws-pipeline.png', methods=['GET'])
 def get_aws_pipeline_graph_png():
     return "hello!"
 
-def main():   
+def main():
+    
     #launch server
     app.run(host='0.0.0.0', port=10080, debug=False)
 
