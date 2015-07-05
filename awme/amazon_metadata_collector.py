@@ -76,6 +76,16 @@ class AmazonInstanceDataCollector(object):
         
         start_time = time.clock() 
         aws_reservations_list = ec2_conn.get_all_instances()
+
+        self.logger.debug("Fetching AWS instance maintenance metadata...")
+        aws_scheduled_maintenance_list = ec2_conn.get_all_instance_status(include_all_instances=True)
+               
+        tmp_host_maintenance_metadata_dict = dict()
+               
+        #turn list into a dictionary
+        for instance in aws_scheduled_maintenance_list:
+            tmp_host_maintenance_metadata_dict[instance.id] = instance
+        
         response_time = time.clock() - start_time
             
         self.logger.debug("Response received in [%s] seconds!" % response_time)
@@ -121,12 +131,26 @@ class AmazonInstanceDataCollector(object):
 
                 host_instance_dict['security_groups'] = sg_list
 
+                #Add information about any scheduled events
+                if (tmp_host_maintenance_metadata_dict.has_key(host_instance.id) and
+                    tmp_host_maintenance_metadata_dict.get(host_instance.id).events != None):
+                    self.logger.debug("instance [%s] has scheduled events!!!" % tmp_host_maintenance_metadata_dict[host_instance.id])
+                    self.logger.debug("  event description: [%s] " % tmp_host_maintenance_metadata_dict.get(host_instance.id).events)
+                    
+                    #host_instance_dict['scheduled-events'] = tmp_host_maintenance_metadata_dict.get(host_instance.id)
+
                 host_metadata_by_instance_id_dict[host_instance.id] = host_instance_dict
         
         self.hosts_by_region_dict[region_string] = host_metadata_by_instance_id_dict
         self.sg_by_region_dict[region_string] = security_groups_dict
         
         self.logger.debug("In memory data refreshed from AWS for region [%s]!" % region_string)
+
+    def getAllInstanceStatus(self, region_string):
+        self.logger.debug("Fetching AWS Instance Status metadata for region [%s]..." % region_string)
+        ec2_conn = boto.ec2.connect_to_region(region_string)
+        
+        return ec2_conn.get_all_instance_status(include_all_instances=True)
 
     def loadRDSDataFromAWS(self, region_string):
         self.logger.debug("Fetching AWS Relational Database Service metadata for region [%s]..." % region_string)
