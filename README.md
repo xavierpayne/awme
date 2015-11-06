@@ -25,7 +25,7 @@ What are the requirements?
 * Python 2.6
 * Flask
 * uwsgi
-* nginx (or some other compatible server
+* nginx (or some other compatible server)
 
 What is the license
 -------------------
@@ -39,7 +39,7 @@ all regions you specify in the config.ini file.
 
 Where is the rest of the documentation!?
 ----------------------------
-Like awme the documentation is currently a work in progress.
+Like awme itself the documentation is currently a work in progress.
 So don't taze me bro!
 
 You should have better test coverage, docs, and support pip or easy_install!
