@@ -25,7 +25,7 @@ What are the requirements?
 * Python 2.6
 * Flask
 * uwsgi
-* nginex (or some other compatible server
+* nginx (or some other compatible server
 
 What is the license
 -------------------
