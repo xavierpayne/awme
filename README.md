@@ -33,9 +33,8 @@ Read the license: https://github.com/sharethis-github/awme/blob/master/LICENSE ;
 
 What is unfinished/todo?
 ------------------------
-The current version is pre-release. It defaults to the region you run it in.
-The first official release will actually allow you to cache information from
-all regions you specify in the config.ini file.
+The current version allows you to cache information from all regions you specify
+in the config.ini file.
 
 Where is the rest of the documentation!?
 ----------------------------
