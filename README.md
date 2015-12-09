@@ -27,6 +27,18 @@ What are the requirements?
 * uwsgi
 * nginx (or some other compatible server)
 
+How do I install?
+-----------------
+On amazon linux...
+$ sudo yum install git nginx gcc
+$ sudo pip install Flask
+$ sudo pip install uwsgi
+$ sudo mkdir /usr/local/bin
+$ sudo git clone https://github.com/xavierpayne/awme.git
+$ sudo chkconfig nginx on
+$ sudo service nginx start
+$ TODO FINISH THE FINAL STUFF
+
 What is the license
 -------------------
 Read the license: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
