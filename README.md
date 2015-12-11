@@ -30,14 +30,14 @@ What are the requirements?
 How do I install?
 -----------------
 On amazon linux...
-# sudo yum install git nginx gcc
-# sudo pip install Flask
-# sudo pip install uwsgi
-# sudo mkdir /usr/local/bin
-# sudo git clone https://github.com/xavierpayne/awme.git
-# sudo chkconfig nginx on
-# sudo service nginx start
-# TODO FINISH THE FINAL STUFF
+1. sudo yum install git nginx gcc
+2. sudo pip install Flask
+3. sudo pip install uwsgi
+4. sudo mkdir /usr/local/bin
+5. sudo git clone https://github.com/xavierpayne/awme.git
+6. sudo chkconfig nginx on
+7. sudo service nginx start
+8. TODO FINISH THE FINAL STUFF
 
 What is the license
 -------------------
