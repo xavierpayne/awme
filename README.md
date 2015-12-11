@@ -33,10 +33,12 @@ On amazon linux...
 1. sudo yum install git nginx gcc
 2. sudo pip install Flask
 3. sudo pip install uwsgi
+4. sudo pip install networkx
 4. sudo mkdir /usr/local/bin
 5. sudo git clone https://github.com/xavierpayne/awme.git
 6. sudo chkconfig nginx on
 7. sudo service nginx start
+8. 
 8. TODO FINISH THE FINAL STUFF
 
 What is the license
