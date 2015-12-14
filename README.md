@@ -18,7 +18,10 @@ Amazon already has an api. Why does awme exist?
 ---------------------------------------
 True Amazon has an API, but that API also has latency. Sometimes it's under one
 second. Other times it can be a minute or more for each call. You could make
-1000's of calls to awme in the same amount of time.
+1000's of calls to awme in the same amount of time. There are also hard limits
+on how frequently Amazon will allow you to call their api's. AwMe's only
+restriction is what it can physically handle. If it's not enough for your use
+case simply launch more instances and place them behind an ELB! :)
 
 What are the requirements?
 --------------------------
