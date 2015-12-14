@@ -43,7 +43,8 @@ On amazon linux...
 
 What is the license
 -------------------
-Read the license: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
+Apache 2.0
+Read the full license here: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
 
 What is unfinished/todo?
 ------------------------
