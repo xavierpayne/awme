@@ -18,7 +18,10 @@ Amazon already has an api. Why does awme exist?
 ---------------------------------------
 True Amazon has an API, but that API also has latency. Sometimes it's under one
 second. Other times it can be a minute or more for each call. You could make
-1000's of calls to awme in the same amount of time.
+1000's of calls to awme in the same amount of time. There are also hard limits
+on how frequently Amazon will allow you to call their api's. AwMe's only
+restriction is what it can physically handle. If it's not enough for your use
+case simply launch more instances and place them behind an ELB! :)
 
 What are the requirements?
 --------------------------
@@ -30,20 +33,21 @@ What are the requirements?
 How do I install?
 -----------------
 On amazon linux...
-1. sudo yum install git nginx gcc
-2. sudo pip install Flask
-3. sudo pip install uwsgi
-4. sudo pip install networkx
-4. sudo mkdir /usr/local/bin
-5. sudo git clone https://github.com/xavierpayne/awme.git
-6. sudo chkconfig nginx on
-7. sudo service nginx start
-8. 
-8. TODO FINISH THE FINAL STUFF
+* sudo yum install git nginx gcc
+* sudo pip install Flask
+* sudo pip install uwsgi
+* sudo pip install networkx
+* sudo mkdir /usr/local/bin
+* sudo git clone https://github.com/xavierpayne/awme.git
+* sudo chkconfig nginx on
+* sudo service nginx start
+* 
+* TODO FINISH THE FINAL STUFF
 
 What is the license
 -------------------
-Read the license: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
+Apache 2.0
+Read the full license here: https://github.com/sharethis-github/awme/blob/master/LICENSE ;)
 
 What is unfinished/todo?
 ------------------------
