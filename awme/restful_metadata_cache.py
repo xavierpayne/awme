@@ -117,7 +117,7 @@ def get_unused_security_groups():
             if (sg_node_count == 0):
                 unused_groups.append(sg)
 
-        unused_security_groups_by_region[current_region] = unused_groups        
+        unused_security_groups_by_region[current_region] = unused_groups
     
     return jsonify({'unused-security-groups': unused_security_groups_by_region})
 
@@ -136,7 +136,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
     awsGraph.name = 'AWS Pipeline'
     awsGraph.add_node('public-internet', {'Label': 'Public Internet', 'Node Type': 'public-internet', 'Size': 100})
     awsGraph.add_node('unused-security-groups', {'Label': 'Unused Security Groups', 'Node Type': 'logical-grouping', 'Size': 10})
-    
+
     for region in security_group_metadata_by_region_dict:
         awsGraph.add_node(region, {'Label': region, 'Node Type': 'aws-region', 'Size': 90})
 
