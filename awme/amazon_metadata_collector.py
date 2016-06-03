@@ -29,6 +29,7 @@ class AmazonInstanceDataCollector(object):
     #They can be replaced in the config.ini.
     config_supported_regions = list()   
     config_persistence_dir = "/dev/shm"
+    config_ignore_security_groups = list()
 
     def __init__(self, params):
         '''
@@ -48,6 +49,7 @@ class AmazonInstanceDataCollector(object):
         config.read('../config/config.ini')
         
         self.config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
+        self.config_ignore_security_groups = config.get('awme_general', 'ignore_security_groups').strip().split(',')
         self.config_persistence_dir = config.get('awme_general', 'persistence_dir')
 
         self.logger.debug("Supported Regions %s" % self.config_supported_regions)
@@ -120,6 +122,9 @@ class AmazonInstanceDataCollector(object):
                 sg_list = list()
                 
                 for sg_instance in host_instance.groups:
+                    if (sg_instance.id in self.config_ignore_security_groups):
+                        continue
+                    
                     sg_dict = dict()
                     sg_dict['sg_id'] = sg_instance.id
                     sg_dict['sg_name'] = sg_instance.name
