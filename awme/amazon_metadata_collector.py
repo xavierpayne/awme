@@ -24,7 +24,8 @@ class AmazonInstanceDataCollector(object):
     sg_by_region_dict = None
     elbs_by_region_dict = None
     rds_by_region_dict = None
-   
+    s3_metadata_by_name_list = list()
+
     #Config variables are just defaults.
     #They can be replaced in the config.ini.
     config_supported_regions = list()   
@@ -47,7 +48,7 @@ class AmazonInstanceDataCollector(object):
         #config = ConfigParser.RawConfigParser(allow_no_value=True)
         config = ConfigParser.RawConfigParser()
         config.read('../config/config.ini')
-        
+
         self.config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
         self.config_ignore_security_groups = config.get('awme_general', 'ignore_security_groups').strip().split(',')
         self.config_persistence_dir = config.get('awme_general', 'persistence_dir')
@@ -58,7 +59,6 @@ class AmazonInstanceDataCollector(object):
             self.hosts_by_region_dict[region_string] = dict()
             self.elbs_by_region_dict[region_string] = dict()
             self.rds_by_region_dict[region_string] = dict()
-
 
     def getInstanceDataforHostname(self, hostname):
         return self.host_metadata_by_hostname_dict[hostname]
@@ -166,14 +166,16 @@ class AmazonInstanceDataCollector(object):
         self.logger.debug("Found [" + str(len(rds_instances)) + "] Relational Database Services.")
 
         rds_metadata_by_name_dict = dict()
-        
+
         for rds_instance in rds_instances:
             self.logger.debug("Found RDS name[" + str(rds_instance.id) + "] in security groups " + str(rds_instance.security_groups))
-            rds_metadata_by_name_dict['name'] = rds_instance.id
             rds_instance_dict = dict()
             rds_instance_dict['rds_id'] = rds_instance.id
+            rds_instance_dict['state'] = rds_instance.status
             rds_instance_dict['security_groups'] = rds_instance.security_groups
-            
+
+            rds_metadata_by_name_dict[rds_instance.id] = rds_instance_dict
+
             for sg_instance in rds_instance.security_groups:
                 #Maintain a reverse lookup that allows us to see what hosts are in a security group                    
                 self.sg_by_region_dict.get(region_string).get(sg_instance).get('relational_database_services').append(rds_instance_dict)
@@ -182,6 +184,17 @@ class AmazonInstanceDataCollector(object):
 
         self.rds_by_region_dict[region_string] = rds_metadata_by_name_dict
 
+
+    def loadS3DataFromAWS(self):
+        self.logger.debug("Fetching AWS S3 metadata...")
+        s3_conn = boto.connect_s3()
+        s3_buckets = s3_conn.get_all_buckets()
+
+        self.logger.debug("Found [" + str(len(s3_buckets)) + "] S3 Buckets.")
+
+        for s3_bucket in s3_buckets:
+            self.logger.debug("Found S3 Bucket[" + str(s3_bucket.name) + "]")
+            self.s3_metadata_by_name_list.append(s3_bucket.name)
 
 
     def loadELBDataFromAWS(self, region_string):
@@ -201,7 +214,7 @@ class AmazonInstanceDataCollector(object):
             elb_instance_dict['security_groups'] = elb.security_groups
             
             for sg_instance in elb.security_groups:
-                #Maintain a reverse lookup that allows us to see what hosts are in a security group                    
+                #Maintain a reverse lookup that allows us to see what hosts are in a security group
                 self.sg_by_region_dict.get(region_string).get(sg_instance).get('load_balancers').append(elb_instance_dict)
 
             #elb_metadata_by_name_dict['security-group'] = elb.name
@@ -232,7 +245,8 @@ class AmazonInstanceDataCollector(object):
         pickle.dump(self.sg_by_region_dict, open("%s/security_group_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.elbs_by_region_dict, open("%s/elb_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
         pickle.dump(self.rds_by_region_dict, open("%s/rds_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
-        
+        pickle.dump(self.s3_metadata_by_name_list, open("%s/s3_metadata.pickle.tmp" % self.config_persistence_dir, "wb"))
+
         self.logger.debug("In memory data written to: [%s]!" % self.config_persistence_dir)
 
 
@@ -250,12 +264,12 @@ def pull_amazon_metadata():
     amazonInstanceDataCollector.initialize_cache()
 
     #fill the cache    
+    amazonInstanceDataCollector.loadS3DataFromAWS()
+    
     for region_string in amazonInstanceDataCollector.config_supported_regions:
         amazonInstanceDataCollector.loadInstanceDataFromAWS(region_string)
         amazonInstanceDataCollector.loadELBDataFromAWS(region_string)
-        
-        #RDS code not yet ready for prime time.
-        #amazonInstanceDataCollector.loadRDSDataFromAWS(region_string)
+        amazonInstanceDataCollector.loadRDSDataFromAWS(region_string)
 
     #flush the cache to disk
     amazonInstanceDataCollector.cache_out()

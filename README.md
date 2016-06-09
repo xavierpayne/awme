@@ -6,11 +6,11 @@ your Amazon host and security group instance metadata!
 
 awme consists of two main parts:
 
-###amazon_metadata_collector
+###amazon_metadata_collector.py
 Fetches host and security group instance data using the AWS api (via boto) at a
 configurable interval and serializes it to disk.
 
-###restful_metadata_cache
+###restful_metadata_cache.py
 Loads and periodically refreshes from pre-serialized metadata on disk and
 serves it from memory as json from a restful api exposed via flask.
 
@@ -25,24 +25,18 @@ case simply launch more instances and place them behind an ELB! :)
 
 What are the requirements?
 --------------------------
-* Python 2.6
+* Python 2.7
 * Flask
-* uwsgi
-* nginx (or some other compatible server)
 
 How do I install?
 -----------------
 On amazon linux...
-* sudo yum install git nginx gcc
+* sudo yum install git gcc
 * sudo pip install Flask
-* sudo pip install uwsgi
 * sudo pip install networkx
-* sudo mkdir /usr/local/bin
+* sudo mkdir /opt/awme
+* cd /opt/awme
 * sudo git clone https://github.com/xavierpayne/awme.git
-* sudo chkconfig nginx on
-* sudo service nginx start
-* 
-* TODO FINISH THE FINAL STUFF
 
 What is the license
 -------------------

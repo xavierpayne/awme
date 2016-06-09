@@ -40,6 +40,8 @@ config_supported_regions = config.get('awme_general', 'supported_regions').strip
 host_metadata_by_region_dict = dict()
 security_group_metadata_by_region_dict = dict()
 elastic_load_balancer_metadata_by_region_dict = dict()
+rds_metadata_by_region_dict = dict()
+s3_bucket_metadata_list = list()
 
 last_refresh_time = 0
 
@@ -47,18 +49,29 @@ last_refresh_time = 0
 def index():
     return "Hello, World!"
 
+@app.route('/awme/api/v1.0/s3_buckets', methods=['GET'])
+def get_all_s3_buckets():
+    refresh()
+
+    return jsonify({'s3-buckets': s3_bucket_metadata_list})
+
+@app.route('/awme/api/v1.0/rds_instances', methods=['GET'])
+def get_all_rds_instances():
+    refresh()
+
+    return jsonify({'rds-instances': rds_metadata_by_region_dict})
 
 @app.route('/awme/api/v1.0/host_instances', methods=['GET'])
 def get_all_host_instances():
     refresh()
-    
+
     return jsonify({'host-instances': host_metadata_by_region_dict})
 
 
 @app.route('/awme/api/v1.0/sg_instances', methods=['GET'])
 def get_all_sg_instances():
     refresh()
-    
+
     return jsonify({'security-groups': security_group_metadata_by_region_dict})
 
 @app.route('/awme/api/v1.0/host_instances/<string:instance_id>', methods=['GET'])
@@ -324,13 +337,15 @@ def determineHostname(host_instance):
 def refresh():
     logger.debug("Checking if it's time for a refresh...")
     time_Now = time.time()
-    global last_refresh_time, host_metadata_by_region_dict, security_group_metadata_by_region_dict, elastic_load_balancer_metadata_by_region_dict
-    
+    global last_refresh_time, host_metadata_by_region_dict, security_group_metadata_by_region_dict, elastic_load_balancer_metadata_by_region_dict, rds_metadata_by_region_dict, s3_bucket_metadata_list
+
     #only reload if we have never loaded before OR at least 2 minutes has elapsed
     if (time_Now == 0 or time_Now - last_refresh_time > 120):
         host_metadata_by_region_dict = pickle.load(open("%s/host_metadata.pickle.tmp" % config_persistence_dir, "rb"))
         security_group_metadata_by_region_dict = pickle.load(open("%s/security_group_metadata.pickle.tmp" % config_persistence_dir, "rb"))
         elastic_load_balancer_metadata_by_region_dict = pickle.load(open("%s/elb_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        rds_metadata_by_region_dict = pickle.load(open("%s/rds_metadata.pickle.tmp" % config_persistence_dir, "rb"))
+        s3_bucket_metadata_list = pickle.load(open("%s/s3_metadata.pickle.tmp" % config_persistence_dir, "rb"))
 
         logger.debug("Memory refreshed from files in: [%s]!" % config_persistence_dir)
         
@@ -344,7 +359,7 @@ def get_aws_pipeline_graph_png():
 
 def main():
     #launch server
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run(host='0.0.0.0', port=18080, debug=False)
 
 if __name__ == '__main__':
     main()
