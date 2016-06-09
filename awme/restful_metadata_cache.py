@@ -148,7 +148,16 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
     awsGraph=nx.DiGraph()
     awsGraph.name = 'AWS Pipeline'
     awsGraph.add_node('public-internet', {'Label': 'Public Internet', 'Node Type': 'public-internet', 'Size': 100})
-    awsGraph.add_node('unused-security-groups', {'Label': 'Unused Security Groups', 'Node Type': 'logical-grouping', 'Size': 10})
+
+    if (show_unused_resources):
+        awsGraph.add_node('unused-security-groups', {'Label': 'Unused Security Groups', 'Node Type': 'logical-grouping', 'Size': 10})
+
+    #process S3 Buckets
+    for s3_bucket in s3_bucket_metadata_list:
+        awsGraph.add_node(s3_bucket,
+            {'Label': s3_bucket,
+             'Node Type': 's3-bucket',
+            })
 
     for region in security_group_metadata_by_region_dict:
         awsGraph.add_node(region, {'Label': region, 'Node Type': 'aws-region', 'Size': 90})
@@ -157,19 +166,19 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
             sg_total_host_instance_cost_per_hour = 0.0
             sg_total_host_instance_cost_per_quarter = 0.0
             sg_total_host_instance_cost_per_year = 0.0
-            
+
             sg_node_count = len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts'))
             sg_node_count += len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('load_balancers'))
 
             if (sg_node_count > 0 or show_unused_resources):
                 sg_label = str(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('sg_name')) + ' (' + str(sg_node_count) + ')'
-    
+
                 if (sg_node_count > 0):
                     sg_node = sg_instance
                     sg_parent_node = None
                 else:
                     sg_parent_node = 'unused-security-groups'
-                    
+
                 awsGraph.add_node(sg_instance, {'Label': sg_label,
                                                 'SG-ID': sg_instance,
                                                 'Region': region,
@@ -178,19 +187,33 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                                 'Cost Per Quarter': sg_total_host_instance_cost_per_quarter,
                                                 'Cost Per Year': sg_total_host_instance_cost_per_year
                                                })
-            
+
                 if (sg_parent_node != None):
                     awsGraph.add_edge(sg_parent_node, sg_instance, {'Label': 'is a',  'Line Color': '#c0c0c0'})
-            
+
                 if (security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags') != None and
                     len(security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags')) > 0):
                     upstreamCommaSepTag = security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags').get('upstream_sg_ids')
-    
+                    uploadsToS3BucketCommaSepTag = security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags').get('uploads_to_s3_bucket')
+                    downloadsFromS3BucketCommaSepTag = security_group_metadata_by_region_dict.get(region).get(sg_instance).get('tags').get('downloads_from_s3_bucket')
+
                     if (upstreamCommaSepTag != None):
                         upstreamList = upstreamCommaSepTag.split(',')
-   
+
                         for upstreamSG in upstreamList:
                             awsGraph.add_edge(upstreamSG, sg_instance, {'Label': 'upstream',  'Line Color': '#c0c0c0'} )
+
+                    if (uploadsToS3BucketCommaSepTag != None):
+                        uploadsToS3BucketList = uploadsToS3BucketCommaSepTag.split(',')
+
+                        for upS3Bucket in uploadsToS3BucketList:
+                            awsGraph.add_edge(upS3Bucket, sg_instance, {'Label': 'uploads-to',  'Line Color': '#c0c0c0'} )
+
+                    if (downloadsFromS3BucketCommaSepTag != None):
+                        downloadsFromS3BucketList = downloadsFromS3BucketCommaSepTag.split(',')
+
+                        for downS3Bucket in downloadsFromS3BucketList:
+                            awsGraph.add_edge(downS3Bucket, sg_instance, {'Label': 'downloads-from',  'Line Color': '#c0c0c0'} )
 
                 #process Elastic Load Balancers
                 for elb_instance in security_group_metadata_by_region_dict.get(region).get(sg_instance).get('load_balancers'):
@@ -200,7 +223,7 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                         'Node Type': 'load-balancer',
                                        })
                     awsGraph.add_edge(elb_instance['name'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
-    
+
                 #process hosts
                 for host_instance in security_group_metadata_by_region_dict.get(region).get(sg_instance).get('hosts'):
                     if (host_instance['state'] == 'stopped'):
@@ -228,28 +251,34 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                     numTags = len(host_instance.get('tags'))
                     product_service = None
                     product = None
+                    stack = None
                     
                     if (numTags > 0):
                         product_service = host_instance.get('tags').get('Product Service')
                         product = host_instance.get('tags').get('Product')
-                        
+                        stack = host_instance.get('tags').get('Stack')
+
                     if (product_service == None):
                         product_service = 'No Details Provided. Ask DevOps/Engineering to provide more detail.'
     
                     if (product == None):
                         product = 'No Details Provided. Ask DevOps/Engineering to provide more detail.'
-    
+
+                    if (stack == None):
+                        stack = 'No Details Provided. Ask DevOps/Engineering to provide more detail.'
+
                     hostname = determineHostname(host_instance)
-    
-    
+
+
                     #Add 120 just in case it was zero. Wouldn't want to divide by zero.
                     host_instance_size = int(host_instance_cost_per_year+120 / 12.0)
-    
+
                     awsGraph.add_node(host_instance['instance_id'],
                                        {'Label': hostname,
                                         'Host-ID': host_instance['instance_id'],
                                         'Region': region,
                                         'Node Type': 'host-instance',
+                                        'Stack': stack,
                                         'Product': product,
                                         'Product Service': product_service,
                                         'Instance Type': host_instance['instance_type'],
@@ -260,13 +289,13 @@ def get_complete_aws_pipeline_graph(show_unused_resources=True):
                                         'Size': host_instance_size,
                                         'Color': host_color
                                        })
-                    
+
                     awsGraph.add_edge(host_instance['instance_id'], sg_instance, {'Label': 'member of',  'Line Color': '#c0c0c0'})
 
             if (sg_node_count > 0 or show_unused_resources):
                 #Add 120 just in case it was zero. Cleaner than another if block just because we don't want to divide by zero.
                 sg_node_size = int(sg_total_host_instance_cost_per_year+120 / 12.0)
-            
+
                 awsGraph.node[sg_instance]['Size'] = sg_node_size
     
     nx.write_graphml(awsGraph,"/tmp/test.graphml")
@@ -348,7 +377,7 @@ def refresh():
         s3_bucket_metadata_list = pickle.load(open("%s/s3_metadata.pickle.tmp" % config_persistence_dir, "rb"))
 
         logger.debug("Memory refreshed from files in: [%s]!" % config_persistence_dir)
-        
+
         last_refresh_time = time_Now
     else:
         logger.debug("NOT time for a refresh...")
