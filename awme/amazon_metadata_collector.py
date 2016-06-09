@@ -24,7 +24,7 @@ class AmazonInstanceDataCollector(object):
     sg_by_region_dict = None
     elbs_by_region_dict = None
     rds_by_region_dict = None
-    s3_metadata_by_name_list = list()
+    s3_metadata_by_name_list = None
 
     #Config variables are just defaults.
     #They can be replaced in the config.ini.
@@ -52,6 +52,8 @@ class AmazonInstanceDataCollector(object):
         self.config_supported_regions = config.get('awme_general', 'supported_regions').strip().split(',')
         self.config_ignore_security_groups = config.get('awme_general', 'ignore_security_groups').strip().split(',')
         self.config_persistence_dir = config.get('awme_general', 'persistence_dir')
+
+        self.s3_metadata_by_name_list = list()
 
         self.logger.debug("Supported Regions %s" % self.config_supported_regions)
         for region_string in self.config_supported_regions:
