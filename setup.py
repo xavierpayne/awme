@@ -16,7 +16,7 @@ setup(name='awme',
       ],
       install_requires=[
         "flask",
-        "uwsgi",
+        "networkx",
         "pickle",
         "boto"
       ],
